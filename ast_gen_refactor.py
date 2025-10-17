@@ -91,7 +91,7 @@ def node_to_dict(node_in_ast):
     #OLD APPROACH
     '''
 
-    if number_of_children > 0:
+    if number_of_children > 1:
         children = []
         child_name_original = node_in_ast.children()[0][0]
         for i in range(0, number_of_children):
@@ -100,12 +100,25 @@ def node_to_dict(node_in_ast):
 
             if child_name_original != child_name:
                 dict_representation[child_name_original] = children
+                print(f"Found {child_name_original} in section where there should be 1 child (edge case though)")
                 children = []
 
             child_dict = node_to_dict(node_in_ast.children()[i][1])
             children.append(child_dict)
+            x= 'stop'
 
         dict_representation[child_name] = children
+        print(f"Found {child_name} in section where there should be 1 child")
+
+    elif number_of_children == 1:
+        for i in range(0, number_of_children):
+            child_name = node_in_ast.children()[i][0]
+            child_name = child_name.split("[")[0]
+
+            child_dict = node_to_dict(node_in_ast.children()[i][1])
+            dict_representation[child_name] = child_dict
+            print(f"Found {child_name} in section where there should be >1 child")
+            x = 'stop'
 
     # for child in node_in_ast.children():
     #     child_dict = node_to_dict(child)
