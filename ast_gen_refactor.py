@@ -42,12 +42,13 @@ def node_to_dict(node_in_ast):
 
 
     #Record Coord object (serialize first)
-    '''
+
     if node_in_ast.coord is not None:
-        dict_representation["coord"] = node_in_ast.coord
+        coord_string = node_in_ast.coord.file + ":" + str(node_in_ast.coord.line) + ":"+ str(node_in_ast.coord.column)
+        dict_representation["coord"] = coord_string
     else:
         dict_representation["coord"] = None
-    '''
+
 
     #Record child attribs (might come in the form of a dict, or array of dicts)
     #TODO this child stuff isn't working correctly -- look into that lol
@@ -59,9 +60,19 @@ def node_to_dict(node_in_ast):
 
 
     # approach for finding all child tuples
+    #TODO Keep in mind that the children are either a dictionary {}, or a LIST [] of dictionaries {}
+    # This should appear like [{d1},{d2},d3}]
+    # This is not currently the case
     number_of_children = len(node_in_ast.children())
+    siblings = []
+
+    #TODO
+    # make a check if there is only one children and approach it differently
+    # if there are more than one children, add them to a list then assign it to the dict representation
+    # if there is only one children, just translate the node to a dict and then assign regularly in dict_representation
     for i in range(0, number_of_children):
         child_name = node_in_ast.children()[i][0]
+        child_name = child_name.split("[")[0]
         child_dict = node_to_dict(node_in_ast.children()[i][1])
         dict_representation[child_name] = child_dict
 
