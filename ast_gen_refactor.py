@@ -70,11 +70,42 @@ def node_to_dict(node_in_ast):
     # make a check if there is only one children and approach it differently
     # if there are more than one children, add them to a list then assign it to the dict representation
     # if there is only one children, just translate the node to a dict and then assign regularly in dict_representation
-    for i in range(0, number_of_children):
-        child_name = node_in_ast.children()[i][0]
+
+    '''
+    #ONE CHILD CASE
+    if number_of_children == 1:
+        child_name = node_in_ast.children()[0][0]
         child_name = child_name.split("[")[0]
-        child_dict = node_to_dict(node_in_ast.children()[i][1])
+        child_dict = node_to_dict(node_in_ast.children()[0][1])
         dict_representation[child_name] = child_dict
+
+    # >1 CHILD CASE
+    elif number_of_children > 1:
+        for i in range(0, number_of_children):
+            child_name = node_in_ast.children()[i][0]
+            child_name = child_name.split("[")[0]
+            child_dict = node_to_dict(node_in_ast.children()[i][1])
+            siblings.append(child_dict)
+
+        dict_representation[node_in_ast.children()[0][0]] = siblings
+    #OLD APPROACH
+    '''
+
+    if number_of_children > 0:
+        children = []
+        child_name_original = node_in_ast.children()[0][0]
+        for i in range(0, number_of_children):
+            child_name = node_in_ast.children()[i][0]
+            child_name = child_name.split("[")[0]
+
+            if child_name_original != child_name:
+                dict_representation[child_name_original] = children
+                children = []
+
+            child_dict = node_to_dict(node_in_ast.children()[i][1])
+            children.append(child_dict)
+
+        dict_representation[child_name] = children
 
     # for child in node_in_ast.children():
     #     child_dict = node_to_dict(child)
