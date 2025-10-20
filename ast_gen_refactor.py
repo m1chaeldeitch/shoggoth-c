@@ -22,6 +22,68 @@ def file_to_json(file_name):
 def file_to_ast(file_name):
     return pycparser.parse_file(file_name)
 
+def node_to_dict_alternate(node_in_ast):
+    # Initialize a new dict for the ast
+    dict_representation = {}
+
+    # Record metadata of the node
+    node_type = node_in_ast.__class__.__name__
+    dict_representation["_nodetype"] = node_in_ast.__class__.__name__
+
+    # Record Local node attribs
+    local_attribs = node_in_ast.attr_names
+
+    for attr in local_attribs:
+        dict_representation[attr] = getattr(node_in_ast, attr)
+
+    # Record Coord object (serialize first)
+    if node_in_ast.coord is not None:
+        coord_string = node_in_ast.coord.file + ":" + str(node_in_ast.coord.line) + ":" + str(node_in_ast.coord.column)
+        dict_representation["coord"] = coord_string
+    else:
+        dict_representation["coord"] = None
+
+    # Record child attribs (might come in the form of a dict, or array of dicts)
+    number_of_children = len(node_in_ast.children())
+    siblings = []
+
+    for i in range(0, number_of_children):
+        number_of_child_children = len(node_in_ast.children()[0][1].children())
+
+        if number_of_child_children > 1:
+            children = []
+            child_name_original = node_in_ast.children()[0][0]
+            for j in range(0, number_of_children):
+                child_name = node_in_ast.children()[j][0]
+                child_name = child_name.split("[")[0]
+
+                if child_name_original != child_name:
+                    dict_representation[child_name_original] = children
+                    print(f"Found {child_name_original} in section where there should be 1 child (edge case though)")
+                    children = []
+
+                child_dict = node_to_dict_alternate(node_in_ast.children()[j][1])
+                children.append(child_dict)
+                x = 'stop'
+
+            dict_representation[child_name] = children
+            print(f"Found {child_name} in section where there should be 1 child")
+
+        elif number_of_child_children == 1:
+            for j in range(0, number_of_children):
+                child_name = node_in_ast.children()[j][0]
+                child_name = child_name.split("[")[0]
+
+                child_dict = node_to_dict_alternate(node_in_ast.children()[j][1])
+                dict_representation[child_name] = child_dict
+                print(f"Found {child_name} in section where there should be >1 child")
+                x = 'stop'
+        else:
+            child_name = node_in_ast.children()[i][0].split("[")[0]
+            child_dict = node_to_dict_alternate(node_in_ast.children()[i][1])
+            dict_representation[child_name] = child_dict
+
+    return dict_representation
 
 '''Returns a dictionary representation of the AST
    Needed because json library can directly turn a dict to json format'''
@@ -90,6 +152,15 @@ def node_to_dict(node_in_ast):
         dict_representation[node_in_ast.children()[0][0]] = siblings
     #OLD APPROACH
     '''
+    for i in range(0, number_of_children):
+        #for each child of the current node, find its length
+        child_name_testing = node_in_ast.children()[i][0]
+        child_node_testing = node_in_ast.children()[i][1]
+        child_children_count = len(node_in_ast.children())
+        x = 'stop'
+
+
+        number_of_children_children = len(node_in_ast.children()[0][1].children())
 
     if number_of_children > 1:
         children = []
@@ -129,6 +200,6 @@ def node_to_dict(node_in_ast):
 
 if __name__ == "__main__":
     ast = pycparser.parse_file('easy.c')
-    dictionary = node_to_dict(ast)
+    dictionary = node_to_dict_alternate(ast)
     print(json.dumps(dictionary, sort_keys=True, indent=4))
     balls = True
