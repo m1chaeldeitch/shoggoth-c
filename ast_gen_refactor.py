@@ -22,6 +22,81 @@ def file_to_json(file_name):
 def file_to_ast(file_name):
     return pycparser.parse_file(file_name)
 
+def node_to_dict_retry(node_in_ast):
+    # Initialize a new dict for the ast
+    dict_representation = {}
+
+    # Record metadata of the node
+    node_type = node_in_ast.__class__.__name__
+    dict_representation["_nodetype"] = node_in_ast.__class__.__name__
+
+    if node_type == 'FileAST':
+        print("STOP")
+
+    # Record Local node attribs
+    local_attribs = node_in_ast.attr_names
+
+    for attr in local_attribs:
+        dict_representation[attr] = getattr(node_in_ast, attr)
+
+    # Record Coord object (serialize first)
+    if node_in_ast.coord is not None:
+        coord_string = node_in_ast.coord.file + ":" + str(node_in_ast.coord.line) + ":" + str(node_in_ast.coord.column)
+        dict_representation["coord"] = coord_string
+    else:
+        dict_representation["coord"] = None
+
+    # Record child attribs of the current node (might come in the form of a dict, or array of dicts)
+    number_of_children_attribs = len(node_in_ast.children())
+
+    children = []
+    curr_attrib_name = None
+
+    # if number_of_children_attribs > 0:
+    #     curr_attrib_name = node_in_ast.children()[0][0].split("[")[0]
+    for i in range(0, number_of_children_attribs):
+        # for each child attribute of the current node
+        #   (1) Record the length of the attribute
+        curr_attrib_name = node_in_ast.children()[i][0].split("[")[0]
+        curr_attrib = node_in_ast.children()[i][1]
+        children.append(node_to_dict_retry(curr_attrib))
+        '''
+        curr_attrib_length = len(curr_attrib.children())
+        #   (2) If == 1 -> assign then do a key value pair like normal, where the
+        #   key is the name of the attribute, and the value is the corresponding dictionary
+        if curr_attrib_length == 1: #todo might have "or == 0"
+            dict_representation[curr_attrib_name] = node_to_dict_retry(curr_attrib)
+
+        #   (3) If > 1  -> create a list of the dictionaries, then assign the key value pair, where the key is the
+        #   attribute name, and the value is the list of dictionaries.
+        elif curr_attrib_length > 1:
+            sub_children = []
+
+            for j in range (0, curr_attrib_length):
+                # for each child of the  current child attribute...
+                sub_child = node_to_dict_retry(curr_attrib.children()[j][1])
+                sub_children.append(sub_child)
+
+            dict_representation[curr_attrib_name] = sub_children
+
+        #todo might need else case
+        '''
+
+    if len(children) == 1:
+        dict_representation[curr_attrib_name] = children[0]
+
+    elif len(children) > 1:
+        dict_representation[curr_attrib_name] = children
+
+
+    return dict_representation
+
+
+
+
+
+
+
 def node_to_dict_alternate(node_in_ast):
     # Initialize a new dict for the ast
     dict_representation = {}
@@ -29,6 +104,9 @@ def node_to_dict_alternate(node_in_ast):
     # Record metadata of the node
     node_type = node_in_ast.__class__.__name__
     dict_representation["_nodetype"] = node_in_ast.__class__.__name__
+
+    if node_type == 'ParamList':
+        print("STOP")
 
     # Record Local node attribs
     local_attribs = node_in_ast.attr_names
@@ -48,11 +126,11 @@ def node_to_dict_alternate(node_in_ast):
     siblings = []
 
     for i in range(0, number_of_children):
-        number_of_child_children = len(node_in_ast.children()[0][1].children())
+        number_of_child_children = len(node_in_ast.children()[i][1].children())
 
         if number_of_child_children > 1:
             children = []
-            child_name_original = node_in_ast.children()[0][0]
+            child_name_original = node_in_ast.children()[i][0].split("[")[0]
             for j in range(0, number_of_children):
                 child_name = node_in_ast.children()[j][0]
                 child_name = child_name.split("[")[0]
@@ -93,8 +171,10 @@ def node_to_dict(node_in_ast):
 
 
     #Record metadata of the node
+    node_type = node_in_ast.__class__.__name__
+    if (node_type == 'FuncDef'):
+        print("STOP")
     dict_representation["_nodetype"] = node_in_ast.__class__.__name__
-
 
     #Record Local node attribs
     local_attribs = node_in_ast.attr_names
@@ -164,13 +244,17 @@ def node_to_dict(node_in_ast):
 
     if number_of_children > 1:
         children = []
-        child_name_original = node_in_ast.children()[0][0]
+        child_name_original = node_in_ast.children()[0][0].split("[")[0]
         for i in range(0, number_of_children):
             child_name = node_in_ast.children()[i][0]
             child_name = child_name.split("[")[0]
-
+            if child_name == 'body':
+                print("STOP HERE MATE")
             if child_name_original != child_name:
-                dict_representation[child_name_original] = children
+                if (len(children) == 1):
+                    dict_representation[child_name_original] = children[0]
+                else:
+                    dict_representation[child_name_original] = children
                 print(f"Found {child_name_original} in section where there should be 1 child (edge case though)")
                 children = []
 
@@ -178,7 +262,10 @@ def node_to_dict(node_in_ast):
             children.append(child_dict)
             x= 'stop'
 
-        dict_representation[child_name] = children
+        if (len(children) == 1):
+            dict_representation[child_name] = children[0]
+        else:
+            dict_representation[child_name] = children
         print(f"Found {child_name} in section where there should be 1 child")
 
     elif number_of_children == 1:
@@ -199,7 +286,7 @@ def node_to_dict(node_in_ast):
 
 
 if __name__ == "__main__":
-    ast = pycparser.parse_file('easy.c')
-    dictionary = node_to_dict_alternate(ast)
+    ast = pycparser.parse_file('dummy.c')
+    dictionary = node_to_dict(ast)
     print(json.dumps(dictionary, sort_keys=True, indent=4))
     balls = True
