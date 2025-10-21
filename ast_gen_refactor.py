@@ -10,6 +10,9 @@ import pycparser
 import json
 import re
 
+from pycparser import c_ast
+from pycparser.plyparser import Coord
+
 '''Used for identification of internal attributes of a node'''
 RE_INTERNAL_ATTR = re.compile('__.*__')
 
@@ -30,7 +33,17 @@ def get_child_attr(node):
 
 '''Returns a JSON representation of the C source file'''
 def file_to_json(file_name):
-    return "Coming soon..."
+    #   File (c) -> ast -> dict -> json
+    ast_rep = pycparser.parse_file(file_name)
+    dictionary_rep = node_to_dict(ast_rep)
+    return  json.dumps(dictionary_rep, sort_keys=True, indent=4)
+
+
+'''Returns the ast representation of some json string'''
+'''NOTE: Error handling not included!!'''
+def from_json_to_ast(json_str):
+    dict_representation = json.loads(json_str)
+    return from_dict_to_ast(dict_representation)
 
 '''Returns an AST representation of a C source file'''
 def file_to_ast(file_name):
@@ -106,8 +119,63 @@ def node_to_dict(node_in_ast):
     return dict_representation
 
 
+'''Part of the deserialization from a python dict back to ast representation'''
+def from_dict_to_ast(dict_representation):
+    if dict_representation.__class__.__name__ == 'str' or dict_representation.__class__.__name__ == 'int':
+        obj_type = dict_representation.__class__
+        if obj_type is None:
+            print("STOP HERE MATE")
+        return obj_type(dict_representation)
+    class_name = dict_representation.pop("_nodetype")
+    node_class = getattr(c_ast, class_name)
+
+    objs = {}
+    for key, value in dict_representation.items():
+        if key == 'coord':
+            if (value is not None):
+                components = value.split(":")
+                coord_obj = Coord(components[0], int(components[1]), int(components[2]))
+                objs[key] = coord_obj
+            else:
+                objs[key] = None
+        else:
+            value_type = type(value)
+            if value_type is dict:
+                objs[key] = from_dict_to_ast(value)
+            elif value_type is list:
+                items = []
+                for item in value:
+                    items.append(from_dict_to_ast(item))
+                objs[key] = items
+            else:
+                objs[key] = value
+
+    return node_class(**objs)
+
 if __name__ == "__main__":
-    ast = pycparser.parse_file('dummy.c')
-    dictionary = node_to_dict(ast)
-    print(json.dumps(dictionary, sort_keys=True, indent=4))
-    balls = True
+    #This segment is for testing the serialization aspect only
+    #   c -> ast -> dict -> json
+    # ast = pycparser.parse_file('dummy.c')
+    # dictionary = node_to_dict(ast)
+    # print(json.dumps(dictionary, sort_keys=True, indent=4))
+
+    #This segment is for testing the de/reserialization aspect
+    #   c -> ast -> dict -> ast -> json
+    # ast_prelim = file_to_ast("dummy.c")
+    # ast_dict = node_to_dict(ast_prelim)
+    # ast = from_dict_to_ast(ast_dict)
+    # print(json.dumps(node_to_dict(ast), sort_keys=True, indent=4))
+
+    #This segment is just producing a json representation of the input C file (serialization)
+    print(file_to_json('dummy.c'))
+
+    #Testing the capabilities of returning the correct AST from a json string
+    # print("REFACTORED VERSION TO OBTAIN AST")
+    # json_representation = file_to_json("dummy.c")
+    # ast = from_json_to_ast(json_representation)
+    # ast.show()
+    #
+    # print("\n\n\nORIGINAL AST GENERATED FROM PYCPARSER")
+    # ast_example = pycparser.parse_file("dummy.c")
+    # ast_example.show()
+
