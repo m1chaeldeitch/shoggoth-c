@@ -4,7 +4,6 @@
 #       AST      ->  Dict
 #       Dict     ->  JSON
 # And the reverse order ( JSON -> Dict -> AST)
-from pstats import SortKey
 
 import pycparser
 import json
@@ -123,8 +122,6 @@ def node_to_dict(node_in_ast):
 def from_dict_to_ast(dict_representation):
     if dict_representation.__class__.__name__ == 'str' or dict_representation.__class__.__name__ == 'int':
         obj_type = dict_representation.__class__
-        if obj_type is None:
-            print("STOP HERE MATE")
         return obj_type(dict_representation)
     class_name = dict_representation.pop("_nodetype")
     node_class = getattr(c_ast, class_name)
