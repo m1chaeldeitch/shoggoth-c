@@ -8,8 +8,24 @@ from pstats import SortKey
 
 import pycparser
 import json
+import re
+
+RE_INTERNAL_ATTR = re.compile('__.*__')
 
 
+'''Gets only the child attributes of an input node'''
+def get_child_attr(node):
+    node_class = node.__class__
+
+    local_attribs = set(node_class.attr_names)
+    all_attribs = []
+
+    for attrib in node_class.__slots__:
+        if not RE_INTERNAL_ATTR.match(attrib):
+            all_attribs.append(attrib)
+
+    all_attribs = set(all_attribs)
+    return all_attribs - local_attribs
 
 
 '''Returns a JSON representation of the C source file'''
@@ -172,7 +188,7 @@ def node_to_dict(node_in_ast):
 
     #Record metadata of the node
     node_type = node_in_ast.__class__.__name__
-    if (node_type == 'FuncDef'):
+    if (node_type == 'ext'):
         print("STOP")
     dict_representation["_nodetype"] = node_in_ast.__class__.__name__
 
@@ -245,10 +261,12 @@ def node_to_dict(node_in_ast):
     if number_of_children > 1:
         children = []
         child_name_original = node_in_ast.children()[0][0].split("[")[0]
+        if child_name_original == 'ext':
+            print("STOP HERE MATE")
         for i in range(0, number_of_children):
             child_name = node_in_ast.children()[i][0]
             child_name = child_name.split("[")[0]
-            if child_name == 'body':
+            if child_name == 'ext':
                 print("STOP HERE MATE")
             if child_name_original != child_name:
                 if (len(children) == 1):
@@ -261,11 +279,14 @@ def node_to_dict(node_in_ast):
             child_dict = node_to_dict(node_in_ast.children()[i][1])
             children.append(child_dict)
             x= 'stop'
-
+        if child_name == 'ext':
+            print("STOP HERE MATE")
         if (len(children) == 1):
             dict_representation[child_name] = children[0]
         else:
             dict_representation[child_name] = children
+
+
         print(f"Found {child_name} in section where there should be 1 child")
 
     elif number_of_children == 1:
@@ -274,14 +295,23 @@ def node_to_dict(node_in_ast):
             child_name = child_name.split("[")[0]
 
             child_dict = node_to_dict(node_in_ast.children()[i][1])
-            dict_representation[child_name] = child_dict
-            print(f"Found {child_name} in section where there should be >1 child")
-            x = 'stop'
+
+            if child_name == 'ext' or child_name == 'block_items':
+                child_as_array = []
+                child_as_array.append(child_dict)
+                dict_representation[child_name] = child_as_array
+            else:
+                dict_representation[child_name] = child_dict
+                print(f"Found {child_name} in section where there should be >1 child")
+                x = 'stop'
 
     # for child in node_in_ast.children():
     #     child_dict = node_to_dict(child)
     #     dict_representation[child.name] = child_dict
 
+    for child_attr in get_child_attr(node_in_ast):
+        if child_attr not in dict_representation:
+            dict_representation[child_attr] = None
     return dict_representation
 
 
